@@ -84,8 +84,8 @@
 ;(define (vx-5 a) (vx a 5))
 ;(define (vx-6 a) (vx a 6))
 ;(define (vx-7 a) (vx a 7))
- (define (vx-8 a) (vx a 8))
-;(define (vx-9 a) (vx a 9))
+;(define (vx-8 a) (vx a 8))
+(define (vx-9 a) (vx a 9))
 
 (define (x2 x) (union (translateX+ x) x))
 (define (y2 y) (union (translateY+ y) y))
