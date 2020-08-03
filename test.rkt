@@ -1,9 +1,28 @@
-#lang rosette
+#lang rosette/safe
  (require rosette/lib/synthax)
+ (require rosette/solver/smt/z3)
+  (require (only-in racket hash in-range for for/list with-handlers flush-output
+                    thread thread-wait break-thread exn:break?
+                    make-semaphore semaphore-wait semaphore-post call-with-semaphore/enable-break
+                    processor-count file-exists? string->path))
+
+(current-solver (z3 
+    #:path "C:/Users/Dan/z3.exe"
+    #:logic 'QF_BV 
+    #:options (hash
+    ':parallel.enable 'true
+    ':parallel.threads.max 16)
+  )
+)
+(current-bitwidth 64)
 
 (struct plus (left right) #:transparent)
 (struct mul (left right) #:transparent)
 (struct square (arg) #:transparent)
+
+(require rosette/lib/match)
+
+(define (d) (4))
 
 (define (interpret p)
   (match p
@@ -43,6 +62,8 @@
 ;;;     [_ p]
 ;;;   ))
 
+
+
 (define-synthax (vx a depth)
   #:base a
   #:else (choose 
@@ -52,7 +73,7 @@
   )
 )
 
-(define (vx-id a) (vx a 2))
+; (define (vx-id a) (vx a 2))
 
 (define (sub-up a) 
   (bvand a (bvnot (bvshl a (bv 1 64))))) 
@@ -81,11 +102,24 @@
 ; x+  x     x       x                   (6)
 ; x                                     (7)
 
-;(define (vx-5 a) (vx a 5))
+;(define (vx-5 a) (vx a 4))
 ;(define (vx-6 a) (vx a 6))
 ;(define (vx-7 a) (vx a 7))
 ;(define (vx-8 a) (vx a 8))
-(define (vx-9 a) (vx a 9))
+;(define (vx-9 a) (vx a 9))
+(define (vx-9 a) 
+  (union 
+    (union 
+      (union (vx a 6) (vx a 6))
+      (union (vx a 6) (vx a 6))
+    )
+    (translateZ+ (translateZ+ (union 
+      (union (vx a 6) (vx a 6))
+      (union (vx a 6) (vx a 6))
+    )))
+  )
+)
+
 
 (define (x2 x) (union (translateX+ x) x))
 (define (y2 y) (union (translateY+ y) y))
@@ -98,10 +132,10 @@
 (define (full-box) (bv #xFFFFFFFFFFFFFFFF 64))
 
 (define-symbolic y (bitvector 64))
-(print-forms 
+ (print-forms 
   (synthesize 
     #:forall (list y)
-    #:guarantee (assert (equal? (full-box) (vx-8 (bv 1 64))))
+    #:guarantee (assert (equal? (full-box) (vx-9 (bv 1 64))))
   )
 )
 
