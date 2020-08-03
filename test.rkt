@@ -11,9 +11,10 @@
     #:logic 'QF_BV 
     #:options (hash
     ':parallel.enable 'true
-    ':parallel.threads.max 16)
+    ':parallel.threads.max 8)
   )
 )
+
 (current-bitwidth 64)
 
 (struct plus (left right) #:transparent)
@@ -31,15 +32,6 @@
     [(square a)  (expt (interpret a) 2)]
     [_ p]))
 
-;;; (struct union (left right) #:transparent)
-;;; (struct diff (left right) #:transparent)
-;;; (struct translateX+ (arg) #:transparent)
-;;; (struct translateX- (arg) #:transparent)
-;;; (struct translateY+ (arg) #:transparent)
-;;; (struct translateY- (arg) #:transparent)
-;;; (struct translateZ+ (arg) #:transparent)
-;;; (struct translateZ- (arg) #:transparent)
-
 (define (union a b) (bvor a b))
 (define (diff a b) (bvand a (bvnot b)))
 (define (translateX+ a) (bvshl  a (bv 1 64)))
@@ -48,52 +40,72 @@
 (define (translateY- a) (bvlshr a (bv 4 64)))
 (define (translateZ+ a) (bvshl  a (bv 16 64)))
 (define (translateZ- a) (bvlshr a (bv 16 64)))
+(define (mirrorX a) 
+  (bvor 
+    (bvor 
+      (bvand a (bv #x3333333333333333 64)) 
+      (bvshl (bvand a (bv #x2222222222222222 64)) (bv 1 64))) 
+    (bvshl (bvand a (bv #x1111111111111111 64)) (bv 3 64)) ))
 
-;;; (define (interpret-vector p) 
-;;;   (match p 
-;;;     [(union a b)     (bvor   (interpret-vector a) (interpret-vector b))]
-;;;     [(diff  a b)     (bvand  (interpret-vector a) (bvnot (interpret-vector b)))]
-;;;     [(translateX+ a) (bvshl  (interpret-vector a) (bv 1 64))] 
-;;;     [(translateX- a) (bvlshr (interpret-vector a) (bv 1 64))] 
-;;;     [(translateY+ a) (bvshl  (interpret-vector a) (bv 4 64))] 
-;;;     [(translateY- a) (bvlshr (interpret-vector a) (bv 4 64))] 
-;;;     [(translateZ+ a) (bvshl  (interpret-vector a) (bv 16 64))] 
-;;;     [(translateZ- a) (bvlshr (interpret-vector a) (bv 16 64))] 
-;;;     [_ p]
-;;;   ))
+(define (mirrorY a) 
+  (define b1 (bvshl (bvand a (bv #x00FF00FF00FF00FF 64)) (bv 8 64)))
+  (define b2 
+    (bvor (bvshl (bvand b1 (bv #x0F0F0F0F0F0F0F0F 64)) (bv 4 64)) (bvlshr (bvand b1 (bv #xF0F0F0F0F0F0F0F0 64)) (bv 4 64))))
+  (define b3 
+    (bvor (bvshl (bvand b2 (bv #x2222222222222222 64)) (bv 2 64)) (bvlshr (bvand b2 (bv #xCCCCCCCCCCCCCCCC 64)) (bv 2 64))))
+  (define b4 
+    (bvor (bvshl (bvand b3 (bv #x5555555555555555 64)) (bv 1 64)) (bvlshr (bvand b3 (bv #xAAAAAAAAAAAAAAAA 64)) (bv 1 64))))
+  (bvor
+    (bvand b4 (bv #xFF00FF00FF00FF00 64))
+    (bvand a (bv #x00FF00FF00FF00FF 64))))
 
+(define (mirrorZ a)
+  (define b1 (bvshl (bvand a (bv #x00000000FFFFFFFF 64)) (bv 32 64)))
+  (define b2 
+    (bvor (bvshl (bvand b1 (bv #x0000FFFF00000000 64)) (bv 16 64)) (bvlshr (bvand b1 (bv #xFFFF000000000000 64)) (bv 16 64))))
+  (define b3 
+    (bvor (bvshl (bvand b2 (bv #x00FF00FF00000000 64)) (bv 8 64)) (bvlshr (bvand b2 (bv #xFF00FF0000000000 64)) (bv 8 64))))
+  (define b4 
+    (bvor (bvshl (bvand b3 (bv #x0F0F0F0F00000000 64)) (bv 4 64)) (bvlshr (bvand b3 (bv #xF0F0F0F000000000 64)) (bv 4 64))))
+  (define b5 
+    (bvor (bvshl (bvand b4 (bv #x2222222200000000 64)) (bv 2 64)) (bvlshr (bvand b4 (bv #xCCCCCCCC00000000 64)) (bv 2 64))))
+  (define b6 
+    (bvor (bvshl (bvand b5 (bv #x5555555500000000 64)) (bv 1 64)) (bvlshr (bvand b5 (bv #xAAAAAAAA00000000 64)) (bv 1 64))))
+  (bvor b6 (bvand a (bv #x00000000FFFFFFFF 64))))
+
+		;;; mirrorX:
+		;;;  ret (x & 0x3333 3333 3333 3333) | ((x & 0x2222 2222 2222 2222) << 1) | ((x & 0x1111 1111 1111 1111) << 3)
+		;;; mirrorY:
+		;;;  b1 = (x & 0x00FF00FF00FF00FF) << 8;
+		;;;  b2 = ((b1 & 0x0F0F0F0F0F0F0F0F) << 4 | (b2 & 0xF0F0F0F0F0F0F0F0 >> 4)); 
+		;;;  b3 = ((b2 & 0x2222222222222222) << 2 | (b3 & 0xCCCCCCCCCCCCCCCC >> 2)); 
+		;;;  b4 = ((b3 & 0x5555555555555555) << 1 | (b4 & 0xAAAAAAAAAAAAAAAA >> 1)); 
+		;;;  ret (b4 & 0xFF00FF00FF00FF00) | (x & 0x00FF00FF00FF00FF)
+		;;; mirrorZ:
+		;;; 	b1 = (x  & (0x00000000FFFFFFFF) << 32);
+		;;; 	b2 = ((b1 & 0x0000FFFF00000000) << 16) | ((b1 & 0xFFFF000000000000) >> 16)
+		;;; 	b3 = ((b2 & 0x00FF00FF00000000) << 8 ) | ((b2 & 0xFF00FF0000000000) >> 8 )
+		;;; 	b4 = ((b3 & 0x0F0F0F0F00000000) << 4 ) | ((b3 & 0xF0F0F0F000000000) >> 4 )
+		;;; 	b5 = ((b4 & 0x2222222200000000) << 2 ) | ((b4 & 0xCCCCCCCC00000000) >> 2 )
+		;;; 	b6 = ((b5 & 0x5555555500000000) << 1 ) | ((b5 & 0xAAAAAAAA00000000) >> 1 )
+		;;; 	ret b6 | (x & 0x00000000FFFFFFFF);
 
 
 (define-synthax (vx a depth)
   #:base a
   #:else (choose 
     a ((choose union diff) (vx a (- depth 1)) (vx a (- depth 1)))
+      ((choose mirrorX mirrorY mirrorZ) (vx a (- depth 1)))
       ((choose translateX+ translateX- translateY+ translateY- translateZ+ translateZ-) 
         (vx a (- depth 1)))
   )
 )
 
-; (define (vx-id a) (vx a 2))
-
 (define (sub-up a) 
   (bvand a (bvnot (bvshl a (bv 1 64))))) 
 
-;; Okay, so this works. We can get a sub-up working.
-;; Now... we want to synthesize the program such that it's not for all y, it's just
-;; for a single given input, we want the single given output.
-;;; (define-symbolic y (bitvector 64))
 
-; (print-forms 
-;   (synthesize 
-;     #:forall (list y)
-;     #:guarantee (assert (equal? (sub-up y) (vx-id y)))
-;   )
-; )
-
-
-; Here's a program that would do it: 
-         
-
+; Here's a program that would construct the 2x2 box. Rosette is actually smarter than this!
 ;                 U                     (1)
 ;        z+                 U           (2)
 ;        U            y+        U       (3)
@@ -102,23 +114,24 @@
 ; x+  x     x       x                   (6)
 ; x                                     (7)
 
+
 ;(define (vx-5 a) (vx a 4))
-;(define (vx-6 a) (vx a 6))
+ (define (vx-6 a) (vx a 6))
 ;(define (vx-7 a) (vx a 7))
 ;(define (vx-8 a) (vx a 8))
 ;(define (vx-9 a) (vx a 9))
-(define (vx-9 a) 
-  (union 
-    (union 
-      (union (vx a 6) (vx a 6))
-      (union (vx a 6) (vx a 6))
-    )
-    (translateZ+ (translateZ+ (union 
-      (union (vx a 6) (vx a 6))
-      (union (vx a 6) (vx a 6))
-    )))
-  )
-)
+;(define (vx-9 a) 
+;  (union 
+;    (union 
+;      (union (vx a 6) (vx a 6))
+;      (union (vx a 6) (vx a 6))
+;    )
+;    (translateZ+ (translateZ+ (union 
+;      (union (vx a 6) (vx a 6))
+;      (union (vx a 6) (vx a 6))
+;    )))
+;  )
+;)
 
 
 (define (x2 x) (union (translateX+ x) x))
@@ -130,100 +143,15 @@
 (define (mirror-box) (bv #x9009064002609009 64))
 (define (tetrominoes) (bv #x0990600240060990 64))
 (define (full-box) (bv #xFFFFFFFFFFFFFFFF 64))
+(define (planes-3) (bv #x9009000000009009 64))
 
 (define-symbolic y (bitvector 64))
  (print-forms 
   (synthesize 
     #:forall (list y)
-    #:guarantee (assert (equal? (full-box) (vx-9 (bv 1 64))))
+    #:guarantee (assert (equal? (planes-3) (vx-6 (bv 1 64))))
   )
 )
-
-
-;;; (define-symbolic y integer?)
-;;; (interpret (square (plus y 2))) 
-
-;;; (define-symbolic x c integer?)
-;;; (assert (even? x))
-;;; (asserts)   ; assertion pushed on the store
-;;; ; ((= 0 (remainder x 2)))
-
-;;; (define sol
-;;;     (synthesize #:forall x
-;;;                 #:guarantee (assert (odd? (+ x c)))))
-;;; (asserts)   ; assertion store same as before
-;;; ; '((= 0 (remainder x 2)))
-
-;;; (evaluate x sol) ; x is unbound
-;;; ; x
-
-;;; (evaluate c sol) ; c must an odd integer
-
-; ---------------------------------------------------------------------------------
-
-; Define the div2 function as a sketch, with a choice of these operations.forall
-; The correct choice is left shift, and the hole represents how much we shift by
-(define (div2 x)
-  ; Hole grammar: ?? maybe-type, returns fresh symbolic variable of type maybe-type
-  ; or integer? if one is not provided.
-  ([choose bvshl bvashr bvlshr bvadd bvsub bvmul] x (?? (bitvector 8))))
-
-; Create a new symbolic variable for the solver
-(define-symbolic i (bitvector 8))
-
-;;; (print-forms ; What does this do?
-;;;      (synthesize 
-;;;         #:forall (list i)
-;;;      ; Assert that this is equal to dividing by a bv value 2 of length 8
-;;;         #:guarantee (assert (equal? (div2 i) (bvudiv i (bv 2 8))))))
-
-; In the end, the result is that shifting right by 1 is always equal to div2, so:
-; '(define (div2 x) (bvlshr x (bv 1 8)))
-
-;; Trying to get: x \ (x+ x- (x)) or any of the equivalents
-;;; (define (zro x)
-;;;   ([choose union diff] x x
-;;;     ;;; ([choose translateX+ translateX- translateY+ translateY- translateZ+ translateZ-]
-;;;     ;;;   ([choose translateX+ translateX- translateY+ translateY- translateZ+ translateZ-]
-;;;     ;;;     x 
-;;;     ;;;   )
-;;;     ;;; )
-;;;   )
-;;; )
-
-
-
-;;; (interpret-vector (diff y (translateX+ (translateX- y))))
-;;; (interpret-vector (diff y y))
-;;; (interpret-vector (union y y))
-
-;;; (define-symbolic q (bitvector 64))
-;;; (interpret-vector (zro q))
-
-;;; (synthesize 
-;;;   #:forall (list q)
-;;;   #:guarantee (assert (equal? (interpret-vector (zro q)) q))
-;;; )
-
-;;; (define-symbolic r (bitvector 64))
-;;; (synthesize 
-;;;   #:forall (list r)
-;;;   #:guarantee (assert (equal? (interpret-vector (zro r)) (bv #x0000000000000000 64)))
-;;; )
-
-
-
-
-;;; (assert (equal? (bv 0 64) (zro q)))
-;;; (asserts)
-
-;;; (print-forms 
-;;;   (synthesize
-;;;     #:forall (list q)
-;;;     #:guarantee (assert (equal? (zro q) (bv 0 64)))
-;;;   )
-;;; )
-
 
 
 ;;; DEFINE min_max(prefix,z0,z1,z2,z3) { 
