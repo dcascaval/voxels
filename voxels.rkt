@@ -46,7 +46,7 @@
   (define b2 
     (bvor (bvshl (bvand b1 (bv #x0F0F0F0F0F0F0F0F 64)) (bv 4 64)) (bvlshr (bvand b1 (bv #xF0F0F0F0F0F0F0F0 64)) (bv 4 64))))
   (define b3 
-    (bvor (bvshl (bvand b2 (bv #x2222222222222222 64)) (bv 2 64)) (bvlshr (bvand b2 (bv #xCCCCCCCCCCCCCCCC 64)) (bv 2 64))))
+    (bvor (bvshl (bvand b2 (bv #x3333333333333333 64)) (bv 2 64)) (bvlshr (bvand b2 (bv #xCCCCCCCCCCCCCCCC 64)) (bv 2 64))))
   (define b4 
     (bvor (bvshl (bvand b3 (bv #x5555555555555555 64)) (bv 1 64)) (bvlshr (bvand b3 (bv #xAAAAAAAAAAAAAAAA 64)) (bv 1 64))))
   (bvor
@@ -63,7 +63,7 @@
   (define b4 
     (bvor (bvshl (bvand b3 (bv #x0F0F0F0F00000000 64)) (bv 4 64)) (bvlshr (bvand b3 (bv #xF0F0F0F000000000 64)) (bv 4 64))))
   (define b5 
-    (bvor (bvshl (bvand b4 (bv #x2222222200000000 64)) (bv 2 64)) (bvlshr (bvand b4 (bv #xCCCCCCCC00000000 64)) (bv 2 64))))
+    (bvor (bvshl (bvand b4 (bv #x3333333300000000 64)) (bv 2 64)) (bvlshr (bvand b4 (bv #xCCCCCCCC00000000 64)) (bv 2 64))))
   (define b6 
     (bvor (bvshl (bvand b5 (bv #x5555555500000000 64)) (bv 1 64)) (bvlshr (bvand b5 (bv #xAAAAAAAA00000000 64)) (bv 1 64))))
   (bvor b6 (bvand a (bv #x00000000FFFFFFFF 64))))
@@ -80,8 +80,8 @@
 )
 
 
-;(define (vx-4 a) (vx a 4))
- (define (vx-5 a) (vx a 5))
+(define (vx-4 a) (vx a 4))
+;(define (vx-5 a) (vx a 5))
 ;(define (vx-6 a) (vx a 6))
 ;(define (vx-7 a) (vx a 7))
 ;(define (vx-8 a) (vx a 8))
@@ -128,6 +128,6 @@
  (print-forms 
   (synthesize 
     #:forall (list y)
-    #:guarantee (assert (equal? (box-2-2) (vx-5 (bv 1 64))))
+    #:guarantee (assert (equal? (planes-3) (vx-4 (bv 1 64))))
   )
 )

@@ -68,7 +68,6 @@ public class Script_Instance : GH_ScriptInstance
   private void RunScript(string x, Box a, ref object A, ref object B, ref object C, ref object D, ref object E)
   {
     var vx = mk_vx(x);
-
     var result = collapse(vx);
     A = result.Print();
 
@@ -90,6 +89,7 @@ public class Script_Instance : GH_ScriptInstance
       }
     }
     setSizes(result, result.width / 2, result.height);
+    //    Rhino.RhinoApp.Write("Flattening\n");
 
     var tree = new DataTree<Box>();
     var arr = new List<Line>();
@@ -161,18 +161,18 @@ public class Script_Instance : GH_ScriptInstance
 
   static ulong mirrorY(ulong x) {
     ulong b1 = (x & 0x00FF00FF00FF00FF) << 8;
-    ulong b2 = ((b1 & 0x0F0F0F0F0F0F0F0F) << 4 | (b1 & 0xF0F0F0F0F0F0F0F0 >> 4));
-    ulong b3 = ((b2 & 0x2222222222222222) << 2 | (b2 & 0xCCCCCCCCCCCCCCCC >> 2));
-    ulong b4 = ((b3 & 0x5555555555555555) << 1 | (b3 & 0xAAAAAAAAAAAAAAAA >> 1));
+    ulong b2 = ((b1 & 0x0F0F0F0F0F0F0F0F) << 4) | ((b1 & 0xF0F0F0F0F0F0F0F0) >> 4);
+    ulong b3 = ((b2 & 0x3333333333333333) << 2) | ((b2 & 0xCCCCCCCCCCCCCCCC) >> 2);
+    ulong b4 = ((b3 & 0x5555555555555555) << 1) | ((b3 & 0xAAAAAAAAAAAAAAAA) >> 1);
     return (b4 & 0xFF00FF00FF00FF00) | (x & 0x00FF00FF00FF00FF);
   }
 
   static ulong mirrorZ(ulong x) {
-    ulong b1 = (x & (0x00000000FFFFFFFF) << 32);
+    ulong b1 = (x & 0x00000000FFFFFFFF) << 32;
     ulong b2 = ((b1 & 0x0000FFFF00000000) << 16) | ((b1 & 0xFFFF000000000000) >> 16);
     ulong b3 = ((b2 & 0x00FF00FF00000000) << 8 ) | ((b2 & 0xFF00FF0000000000) >> 8 );
     ulong b4 = ((b3 & 0x0F0F0F0F00000000) << 4 ) | ((b3 & 0xF0F0F0F000000000) >> 4 );
-    ulong b5 = ((b4 & 0x2222222200000000) << 2 ) | ((b4 & 0xCCCCCCCC00000000) >> 2 );
+    ulong b5 = ((b4 & 0x3333333300000000) << 2 ) | ((b4 & 0xCCCCCCCC00000000) >> 2 );
     ulong b6 = ((b5 & 0x5555555500000000) << 1 ) | ((b5 & 0xAAAAAAAA00000000) >> 1 );
     return b6 | (x & 0x00000000FFFFFFFF);
   }

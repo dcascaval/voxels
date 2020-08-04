@@ -91,7 +91,7 @@
        (translateZ+
         (translateY+ (translateY+ (translateX- (translateZ+ a)))))))))
         
-; 3-planes (uses mirrors!)
+; 3-planes - depth 6 (uses mirrors!)
 '(define (vx-6 a)
    (mirrorX
     (diff
@@ -101,3 +101,6 @@
       (union
        (translateZ+ (translateY+ a))
        (union (translateZ+ a) (translateX+ a)))))))
+
+; 3-planes - depth 4 (simplest solution)
+(mirrorZ (mirrorX (mirrorY (mirrorX a))))
