@@ -69,9 +69,10 @@ public class Script_Instance : GH_ScriptInstance
   {
     // Rhino.RhinoApp.Write("Parsing\n");
     var vx = mk_vx(x);
-    A = vx.Print();
+
     //   Rhino.RhinoApp.Write("Condensing\n");
     var result = collapse(vx);
+    A = result.Print();
 
     result.SetBoxes();
     var bbox = new BoundingBox(result.boxes.SelectMany(p => new Point3d[]{p.GetCorners()[0],p.GetCorners()[6]}));
@@ -117,7 +118,10 @@ public class Script_Instance : GH_ScriptInstance
     YN = 5,
     ZP = 6,
     ZN = 7,
-    Base = 8
+    MX = 8,
+    MY = 9,
+    MZ = 10,
+    Base = 11
   }
 
   public struct VxNode {
@@ -153,6 +157,29 @@ public class Script_Instance : GH_ScriptInstance
         return;
     }
   }
+
+  static ulong mirrorX(ulong x) {
+    return (x & 0x3333333333333333) | ((x & 0x2222222222222222) << 1) | ((x & 0x1111111111111111) << 3);
+  }
+
+  static ulong mirrorY(ulong x) {
+    ulong b1 = (x & 0x00FF00FF00FF00FF) << 8;
+    ulong b2 = ((b1 & 0x0F0F0F0F0F0F0F0F) << 4 | (b1 & 0xF0F0F0F0F0F0F0F0 >> 4));
+    ulong b3 = ((b2 & 0x2222222222222222) << 2 | (b2 & 0xCCCCCCCCCCCCCCCC >> 2));
+    ulong b4 = ((b3 & 0x5555555555555555) << 1 | (b3 & 0xAAAAAAAAAAAAAAAA >> 1));
+    return (b4 & 0xFF00FF00FF00FF00) | (x & 0x00FF00FF00FF00FF);
+  }
+
+  static ulong mirrorZ(ulong x) {
+    ulong b1 = (x & (0x00000000FFFFFFFF) << 32);
+    ulong b2 = ((b1 & 0x0000FFFF00000000) << 16) | ((b1 & 0xFFFF000000000000) >> 16);
+    ulong b3 = ((b2 & 0x00FF00FF00000000) << 8 ) | ((b2 & 0xFF00FF0000000000) >> 8 );
+    ulong b4 = ((b3 & 0x0F0F0F0F00000000) << 4 ) | ((b3 & 0xF0F0F0F000000000) >> 4 );
+    ulong b5 = ((b4 & 0x2222222200000000) << 2 ) | ((b4 & 0xCCCCCCCC00000000) >> 2 );
+    ulong b6 = ((b5 & 0x5555555500000000) << 1 ) | ((b5 & 0xAAAAAAAA00000000) >> 1 );
+    return b6 | (x & 0x00000000FFFFFFFF);
+  }
+
 
   static Box moveBox(Box box, Vector3d v) {
     var corners = box.GetCorners();
@@ -209,6 +236,11 @@ public class Script_Instance : GH_ScriptInstance
       }
     }
 
+    public string Print() {
+      var sub = string.Join(" ", this.args.Select(i => i.Print()).ToArray());
+      return string.Join(" ", new string[] {"[", this.op_type.ToString(), sub, data.ToString(), "]"});
+    }
+
     public void SetPosition(Vector3d v) {
       basePt = new Point3d(v.X, v.Y, v.Z);
       for (var i = 0; i < boxes.Count; i++) {
@@ -247,6 +279,9 @@ public class Script_Instance : GH_ScriptInstance
     if (op == "translateY-") return Op.YN;
     if (op == "translateZ+") return Op.ZP;
     if (op == "translateZ-") return Op.ZN;
+    if (op == "mirrorX") return Op.MX;
+    if (op == "mirrorY") return Op.MY;
+    if (op == "mirrorZ") return Op.MZ;
     return Op.Base;
   }
 
@@ -281,7 +316,7 @@ public class Script_Instance : GH_ScriptInstance
     var i = 0;
     while (i < ss.Length && !Char.IsWhiteSpace(ss, i)) i++;
     Op op = op_type(ss.Substring(0, i));
-    // Rhino.RhinoApp.Write(op.ToString() + "\n");
+    Rhino.RhinoApp.Write(op.ToString() + "\n");
     if (op == Op.Base) {
       return new VxNode(op, new List<VxNode>());
     }
@@ -302,7 +337,8 @@ public class Script_Instance : GH_ScriptInstance
   }
 
   BoxNode combine(VxNode input) {
-    if (input.op_type == Op.Base || input.op_type == Op.Union || input.op_type == Op.Diff) {
+    if (input.op_type == Op.Base || input.op_type == Op.Union || input.op_type == Op.Diff ||
+    input.op_type == Op.MX || input.op_type == Op.MY || input.op_type == Op.MZ) {
       return collapse(input);
     } else {
       var c = combine(input.args[0]);
@@ -334,6 +370,18 @@ public class Script_Instance : GH_ScriptInstance
       var c2 = collapse(input.args[1]);
       return new BoxNode(Op.Union, new List<BoxNode>(){c1,c2}, c1.data | c2.data);
     }
+    if (input.op_type == Op.MX) {
+      var c = collapse(input.args[0]);
+      return new BoxNode(Op.MX, new List<BoxNode>(){c}, mirrorX(c.data));
+    }
+    if (input.op_type == Op.MY) {
+      var c = collapse(input.args[0]);
+      return new BoxNode(Op.MY, new List<BoxNode>(){c}, mirrorY(c.data));
+    }
+    if (input.op_type == Op.MZ) {
+      var c = collapse(input.args[0]);
+      return new BoxNode(Op.MZ, new List<BoxNode>(){c}, mirrorZ(c.data));
+    }
     return combine(input);
   }
 
@@ -354,6 +402,11 @@ public class Script_Instance : GH_ScriptInstance
     if (node.op_type == Op.Union || node.op_type == Op.Diff) {
       flatten(tree, arr, lbl, bases, node.args[0], offset);
       flatten(tree, arr, lbl, bases, node.args[1], offset);
+      var p = tree.BranchCount;
+      tree.AddRange(node.boxes, new GH_Path(p));
+    }
+    if (node.op_type == Op.MX || node.op_type == Op.MY || node.op_type == Op.MZ) {
+      flatten(tree, arr, lbl, bases, node.args[0], offset);
       var p = tree.BranchCount;
       tree.AddRange(node.boxes, new GH_Path(p));
     }

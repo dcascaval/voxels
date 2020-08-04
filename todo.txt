@@ -1,0 +1,4 @@
+
+- Debug why mirror visualizer is a little funny-looking
+- Rework into 3-address abstract code w/ fixed number of instrs rather than AST depth
+-  

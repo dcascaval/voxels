@@ -91,3 +91,13 @@
        (translateZ+
         (translateY+ (translateY+ (translateX- (translateZ+ a)))))))))
         
+; 3-planes (uses mirrors!)
+'(define (vx-6 a)
+   (mirrorX
+    (diff
+     (mirrorZ (mirrorX (mirrorY (mirrorX a))))
+     (union
+      (translateY+ (union (translateZ+ a) a))
+      (union
+       (translateZ+ (translateY+ a))
+       (union (translateZ+ a) (translateX+ a)))))))

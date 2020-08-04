@@ -1,0 +1,67 @@
+
+DEFINE min_max(prefix,z0,z1,z2,z3) { 
+  int $prefix_min = 0 + 1 * (z1 & !z0) + 2 * (z2 & !z0 & !z1) + 3 * (z3 & !z2 & !z1 & !z0);
+  int $prefix_max = (3 * z3) + 2 * (z2 & !z3) + 1 * (z1 & !z2 & !z3) + 0;
+}
+
+// Implicitly with a dimension of 4. If we want a variable dimension
+// This will probably need some loops.
+bv bbox(bv s) { 
+  bv z_mask = 0xFFFF000000000000; 
+  bool z0 = (z_mask >> 0  & s) > 0; 
+  bool z1 = (z_mask >> 16 & s) > 0;
+  bool z2 = (z_mask >> 32 & s) > 0;
+  bool z3 = (z_mask >> 48 & s) > 0;
+  min_max(z,z0,z1,z2,z3); 
+  bv y_mask = 0xF000F000F000F000;
+  bool y0 = (y_mask >> 0  & s) > 0;
+  bool y1 = (y_mask >> 4  & s) > 0; 
+  bool y2 = (y_mask >> 8  & s) > 0; 
+  bool y3 = (y_mask >> 12 & s) > 0;
+  min_max(y,y0,y1,y2,y3); 
+  bv x_mask = 0x8888888888888888;
+  bool x0 = (x_mask >> 0 & s) > 0; 
+  bool x1 = (x_mask >> 1 & s) > 0; 
+  bool x2 = (x_mask >> 2 & s) > 0; 
+  bool x3 = (x_mask >> 3 & s) > 0;
+  min_max(x,x0,x1,x2,x3);
+  // Now that we have masked everything, we
+  // would like to OR together everything between the min & max for each dimension.
+  bv z =  (0 >= zmin & 0 <= zmax & zmask >> 0 )
+        & (1 >= zmin & 1 <= zmax & zmask >> 16)
+        & (2 >= zmin & 2 <= zmax & zmask >> 32)
+        & (3 >= zmin & 3 <= zmax & zmask >> 48); 
+  bv y =  (0 >= ymin & 0 <= ymax & ymask >> 0 )
+        & (1 >= ymin & 1 <= ymax & ymask >> 4 )
+        & (2 >= ymin & 2 <= ymax & ymask >> 8 )
+        & (3 >= ymin & 3 <= ymax & ymask >> 12); 
+  bv x =  (0 >= xmin & 0 <= xmax & xmask >> 0 )
+        & (1 >= xmin & 1 <= xmax & xmask >> 1 )
+        & (2 >= xmin & 2 <= xmax & xmask >> 2 )
+        & (3 >= xmin & 3 <= xmax & xmask >> 3 ); 
+  return s > 0 & (x | y | z); 
+}
+
+ // This is by far the most complex operation, particularly as the
+ // semantics are unclear. Unlike the other operations, it doesn't have
+ // an inverse, and can very easily overflow. But basically we want to 
+ // replicate each dimensional slice F times, offsetting the later slices
+ // by as many times as needed to accomodate the earlier ones 
+ // (so, lot of duplications, OR, translates, etc.)
+ bv scale (bv s, int f, int dimension) { 
+  // We can either use the base point of the bbox, or the base point of the origin. 
+  // TODO: implement
+ }
+
+ bv translate (bv s, int direction, int magnitude) { 
+ // alternatively: shift = magnitude * (1 << (2 * direction)), 
+ // and allow negative shifts to work, then just s >> shift;
+  match (direction) { 
+    // X 
+    0 => magnitude > 0 ? s >> magnitude : s << magnitude 
+    // Y
+    1 => magnitude > 0 ? s >> (magnitude * 4) : s << (magnitude * 4)
+    // Z
+    2 => magnitude > 0 ? s >> (magnitude * 16) : s << (magnitude * 16) 
+  }
+ }
