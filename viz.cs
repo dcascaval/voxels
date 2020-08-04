@@ -67,10 +67,8 @@ public class Script_Instance : GH_ScriptInstance
   /// </summary>
   private void RunScript(string x, Box a, ref object A, ref object B, ref object C, ref object D, ref object E)
   {
-    // Rhino.RhinoApp.Write("Parsing\n");
     var vx = mk_vx(x);
 
-    //   Rhino.RhinoApp.Write("Condensing\n");
     var result = collapse(vx);
     A = result.Print();
 
@@ -92,7 +90,6 @@ public class Script_Instance : GH_ScriptInstance
       }
     }
     setSizes(result, result.width / 2, result.height);
-    //    Rhino.RhinoApp.Write("Flattening\n");
 
     var tree = new DataTree<Box>();
     var arr = new List<Line>();
@@ -197,7 +194,6 @@ public class Script_Instance : GH_ScriptInstance
     public Point3d basePt;
 
     public BoxNode(Op op, List<BoxNode> in_args, ulong in_data) {
-      // RhinoApp.WriteLine(op.ToString() + " " + in_data.ToString());
       op_type = op;
       args = in_args;
       data = in_data;
@@ -286,7 +282,6 @@ public class Script_Instance : GH_ScriptInstance
   }
 
   string get_balanced(string ss, int i) {
-    //  Rhino.RhinoApp.Write("<b>" + ss + "</b>(" + i.ToString() + ")");
     var start = i;
     if (ss[i] == '(') {
       var bal = 1; i++;
@@ -297,13 +292,11 @@ public class Script_Instance : GH_ScriptInstance
       }
       var end = i;
       var result = ss.Substring(start, end - start);
-      // Rhino.RhinoApp.Write(" => \"" + result + "\" \n");
       return result;
     } else {
       while (i < ss.Length && !Char.IsWhiteSpace(ss, i)) i++;
       var end = i;
       var result = ss.Substring(start, end - start);
-      // Rhino.RhinoApp.Write(" => \"" + result + "\" \n");
       return result;
     }
   }
@@ -316,7 +309,6 @@ public class Script_Instance : GH_ScriptInstance
     var i = 0;
     while (i < ss.Length && !Char.IsWhiteSpace(ss, i)) i++;
     Op op = op_type(ss.Substring(0, i));
-    Rhino.RhinoApp.Write(op.ToString() + "\n");
     if (op == Op.Base) {
       return new VxNode(op, new List<VxNode>());
     }
