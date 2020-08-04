@@ -80,24 +80,13 @@
 )
 
 
-(define (vx-4 a) (vx a 4))
+;(define (vx-4 a) (vx a 4))
 ;(define (vx-5 a) (vx a 5))
 ;(define (vx-6 a) (vx a 6))
 ;(define (vx-7 a) (vx a 7))
-;(define (vx-8 a) (vx a 8))
+ (define (vx-8 a) (vx a 8))
 ;(define (vx-9 a) (vx a 9))
-'(define (union-skeleton a) 
-  (union 
-    (union 
-      (union (vx a 6) (vx a 6))
-      (union (vx a 6) (vx a 6))
-    )
-    (translateZ+ (translateZ+ (union 
-      (union (vx a 6) (vx a 6))
-      (union (vx a 6) (vx a 6))
-    )))
-  )
-)
+
 
 ; This 'implementation' of Box-2-2 corresponds to the following CSG:
 ; Rosette is actually smarter than this, as this is of depth 7, and 
@@ -118,9 +107,12 @@
 
 (define (box-2-2) (xyz2 (bv 1 64)))
 (define (mirror-box) (bv #x9009064002609009 64))
+(define (true-mirror-box) (bv #x9009066006609009 64))
 (define (tetrominoes) (bv #x0990600240060990 64))
+(define (tetrominoes-2) (bv #x0990681241860990 64))
 (define (full-box) (bv #xFFFFFFFFFFFFFFFF 64))
 (define (planes-3) (bv #x9009000000009009 64))
+(define (planes-3-chunk) (bv #x9009000000009000 64))
 
 ; Input is always the unit (0,0) voxel, i.e. (bv 1 64). 
 ; We guarantee that the result is equal to the specified geometry output.
@@ -128,6 +120,6 @@
  (print-forms 
   (synthesize 
     #:forall (list y)
-    #:guarantee (assert (equal? (planes-3) (vx-4 (bv 1 64))))
+    #:guarantee (assert (equal? (tetrominoes-2) (vx-8 (bv 1 64))))
   )
 )

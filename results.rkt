@@ -104,3 +104,8 @@
 
 ; 3-planes - depth 4 (simplest solution)
 (mirrorZ (mirrorX (mirrorY (mirrorX a))))
+
+; 3-planes with chunk missing, it found the diff-solution :)
+(diff
+    (mirrorZ (mirrorY (mirrorX a)))
+    (translateZ- (mirrorX (translateZ+ a)))))
