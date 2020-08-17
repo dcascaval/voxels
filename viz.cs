@@ -88,8 +88,7 @@ public class Script_Instance : GH_ScriptInstance
         skeleton.Add(new Line(new Point3d(i, j, bbox.Min.Z), new Point3d(i, j, bbox.Max.Z)));
       }
     }
-    setSizes(result, result.width / 2, result.height);
-    //    Rhino.RhinoApp.Write("Flattening\n");
+    setSizes(result, 0, result.height);
 
     var tree = new DataTree<Box>();
     var arr = new List<Line>();
@@ -105,7 +104,7 @@ public class Script_Instance : GH_ScriptInstance
     E = skeleton;
   }
 
-  // <Custom additional code> 
+  // <Custom additional code>
   public enum Op {
     Union = 0,
     Diff = 1,
@@ -159,6 +158,7 @@ public class Script_Instance : GH_ScriptInstance
     return (x & 0x3333333333333333) | ((x & 0x2222222222222222) << 1) | ((x & 0x1111111111111111) << 3);
   }
 
+
   static ulong mirrorY(ulong x) {
     ulong b1 = (x & 0x00FF00FF00FF00FF) << 8;
     ulong b2 = ((b1 & 0x0F0F0F0F0F0F0F0F) << 4) | ((b1 & 0xF0F0F0F0F0F0F0F0) >> 4);
@@ -198,7 +198,7 @@ public class Script_Instance : GH_ScriptInstance
       args = in_args;
       data = in_data;
       height = 0;
-      width = 6;
+      width = 5;
       boxes = new List<Box>();
       basePt = new Point3d(0, 0, 0);
       if (op == Op.Base) return;
@@ -248,9 +248,9 @@ public class Script_Instance : GH_ScriptInstance
       switch (op_type) {
         case Op.Union:
         case Op.Diff:
-          return args[1].width / 2;
+          return args[1].width + 3;
         default:
-          return width / 2;
+          return width;
       }
     }
 
@@ -258,9 +258,9 @@ public class Script_Instance : GH_ScriptInstance
       switch (op_type) {
         case Op.Union:
         case Op.Diff:
-          return args[0].width / 2;
+          return args[0].width + 3;
         default:
-          return width / 2;
+          return width;
       }
     }
   }
@@ -309,6 +309,7 @@ public class Script_Instance : GH_ScriptInstance
     var i = 0;
     while (i < ss.Length && !Char.IsWhiteSpace(ss, i)) i++;
     Op op = op_type(ss.Substring(0, i));
+    Rhino.RhinoApp.Write(op.ToString() + "\n");
     if (op == Op.Base) {
       return new VxNode(op, new List<VxNode>());
     }
@@ -383,7 +384,7 @@ public class Script_Instance : GH_ScriptInstance
     List<string> lbl,
     List<Point3d> bases,
     BoxNode node,
-  Vector3d offset) {
+   Vector3d offset) {
 
     if (node.op_type == Op.Base) {
       var p = tree.BranchCount;
@@ -411,5 +412,5 @@ public class Script_Instance : GH_ScriptInstance
     }
   }
 
-  // </Custom additional code> 
+  // </Custom additional code>
 }
